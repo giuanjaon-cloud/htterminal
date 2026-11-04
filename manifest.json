@@ -1,0 +1,15 @@
+{
+  "name": "Hattrick Terminal",
+  "short_name": "Hattrick",
+  "start_url": "/htterminal/",
+  "display": "standalone",
+  "background_color": "#030503",
+  "theme_color": "#030503",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/giuanjaon-cloud/htterminal/main/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
