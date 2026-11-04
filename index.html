@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#030503">
+<meta name="referrer" content="no-referrer">
+<title>Hattrick Terminal — Live</title>
+<script>
+  window.open = function() { return null; };
+  window.addEventListener("beforeunload", function (e) {
+    e.preventDefault();
+    e.returnValue = "";
+    return "";
+  });
+</script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#030503;
+  --panel:#071007;
+  --green:#00ff46;
+  --soft:#b4ffb4;
+  --dim:#1b3d1f;
+  --white:#efffef;
+  --red:#ff4d6d;
+  --yellow:#ffcc00;
+  --muted:#8ba88b;
+  --gap:clamp(10px,1.2vw,16px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg);color:var(--green);font-family:Consolas,"Courier New",monospace}
+body{
+  min-height:100vh;
+  min-height:100dvh;
+  padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+  overflow-x:hidden;
+}
+button,input,select{font:inherit;color:inherit}
+button{touch-action:manipulation;cursor:pointer}
+:focus-visible{outline:2px solid var(--yellow)!important;outline-offset:2px}
+.app,.content{width:min(100%,1600px);margin:0 auto}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:4px 0 14px;flex-wrap:wrap}
+.kicker,.label,.hint,.status{color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.kicker{font-size:11px;margin-bottom:4px}
+h1{font-size:clamp(22px,3.2vw,40px);text-transform:uppercase;line-height:1}
+h1 span{color:var(--white)}
+.status{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--dim);padding:7px 11px;font-size:12px;white-space:nowrap}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(0,255,70,.8)}
+.filters{display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,2fr);gap:10px;padding:12px;border:1px solid var(--dim);background:var(--panel)}
+.label{display:block;margin-bottom:6px;font-size:11px}
+select,.search{width:100%;height:44px;border:1px solid var(--dim);background:var(--bg);color:var(--green);font-size:15px}
+select{padding:0 10px}
+.search{display:flex;align-items:center;gap:8px;padding:0 8px 0 12px}
+.search input{width:100%;height:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--green);font-size:15px;text-transform:uppercase}
+.search input::placeholder{color:#5d7a5d}
+.clear{display:none;width:36px;height:36px;border:0;background:transparent;color:var(--red);font-size:22px;align-items:center;justify-content:center}
+.search.has-val .clear{display:inline-flex}
+.heading{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:16px 0 10px}
+h2{font-size:15px;color:var(--soft);text-transform:uppercase}
+.hint{font-size:11px;text-align:right}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:var(--gap);padding-bottom:24px}
+.card{
+  display:flex;flex-direction:column;width:100%;min-width:0;min-height:135px;padding:12px 14px;
+  border:1px solid var(--dim);border-left:3px solid var(--green);
+  background:linear-gradient(135deg,rgba(0,255,70,.04),rgba(0,255,70,.01));
+  color:var(--green);text-align:left;font-family:inherit;transition:background .15s ease, border-color .15s ease;
+}
+.card:hover,.card:focus-visible{border-color:var(--green);background:rgba(0,255,70,.08)}
+.card-top,.card-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card-top{padding-bottom:8px;border-bottom:1px dashed var(--dim)}
+.league{color:var(--soft);font-size:12px;text-transform:uppercase;overflow-wrap:anywhere}
+.live{display:inline-flex;align-items:center;gap:5px;color:#ff859b;font-size:11px;font-weight:bold;white-space:nowrap}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red)}
+.teams{
+  display:flex;flex:1 1 auto;align-items:center;flex-wrap:wrap;gap:6px 10px;
+  padding:12px 0;color:var(--white);font-size:clamp(16px,1.5vw,22px);line-height:1.25;
+}
+.team{min-width:0;overflow-wrap:anywhere}
+.versus{flex:none;color:var(--green);font-size:.7em;opacity:.7}
+.hl{background:var(--green);color:#000;padding:0 2px}
+.card-bottom{padding-top:8px;border-top:1px dashed var(--dim)}
+.meta{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.watch{flex:none;padding:5px 9px;border:1px solid var(--red);color:#ff9bad;font-size:11px;text-transform:uppercase;white-space:nowrap}
+.card:hover .watch{background:var(--red);color:#000}
+.error{grid-column:1/-1;padding:40px 12px;color:#ff9bad;text-align:center}
+
+/* MODAL */
+.modal{position:fixed;z-index:2000;inset:0;display:none;align-items:center;justify-content:center;padding:12px;background:rgba(0,0,0,.96)}
+.modal.open{display:flex}
+.shell{display:flex;width:min(100%,1500px);height:min(100%,900px);min-height:0;flex-direction:column;overflow:hidden;border:1px solid var(--green);background:var(--bg)}
+.modal-head{display:flex;flex:none;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-bottom:1px solid var(--dim);background:var(--panel)}
+.modal-title{flex:1;min-width:0;color:var(--white);font-size:clamp(14px,1.6vw,19px);overflow-wrap:anywhere;text-transform:uppercase}
+.modal-title small{color:var(--soft);font-weight:normal}
+.close{flex:none;min-height:38px;padding:5px 12px;background:transparent;color:#ff859b;border:1px solid var(--red);font-family:inherit;font-size:13px}
+.close:hover{background:var(--red);color:#000}
+
+/* BARRA CANALI */
+.sources-wrap{
+  display:flex;flex:none;align-items:center;gap:6px;padding:8px 12px;
+  border-bottom:1px solid var(--dim);background:#050a05;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;
+  scrollbar-width:none;
+}
+.sources-wrap::-webkit-scrollbar{display:none}
+.source-label{flex:none;color:var(--muted);font-size:11px;text-transform:uppercase;margin-right:2px}
+.source-btn{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  min-height:36px;padding:5px 11px;background:transparent;color:var(--soft);
+  border:1px solid var(--dim);font-family:inherit;font-size:12px;
+}
+.source-btn.active,.source-btn:hover{background:var(--green);color:#000;border-color:var(--green);font-weight:bold}
+
+/* PLAYER STAGE 16:9 */
+.player-stage{
+  position:relative;
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#000;
+  width:100%;
+  overflow:hidden;
+}
+
+.frame-wrap{
+  position:relative;
+  width:100%;
+  max-width:100%;
+  aspect-ratio:16 / 9;
+  max-height:100%;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.frame{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  border:0;
+  background:#000;
+}
+
+.frame-wrap:fullscreen{
+  width:100vw !important;
+  height:100vh !important;
+  max-width:none !important;
+  max-height:none !important;
+  aspect-ratio:auto !important;
+  background:#000 !important;
+}
+
+.frame-wrap:fullscreen .frame{
+  position:relative !important;
+  width:100% !important;
+  height:100% !important;
+  max-width:calc(100vh * 16 / 9) !important;
+  max-height:calc(100vw * 9 / 16) !important;
+  aspect-ratio:16 / 9 !important;
+  margin:auto !important;
+}
+
+.frame-loader{
+  position:absolute;z-index:2;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;background:#000;color:var(--green);font-size:13px;letter-spacing:.06em;pointer-events:none;
+}
+.spinner{width:34px;height:34px;border:3px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+
+.fallback{
+  position:absolute;z-index:3;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:24px;background:rgba(0,0,0,.95);color:var(--soft);text-align:center;
+}
+.fallback.visible{display:flex}
+.fallback strong{color:var(--green);font-size:15px}
+.fallback p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.5}
+.fallback-btn{
+  display:inline-flex;align-items:center;justify-content:center;min-height:40px;
+  padding:6px 14px;background:var(--panel);color:var(--soft);border:1px solid var(--green);
+  text-decoration:none;font-family:inherit;font-size:13px;
+}
+.fallback-btn:hover{background:var(--green);color:#000}
+
+.footer{display:flex;flex:none;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--dim);background:var(--panel);color:var(--muted);font-size:12px}
+.footer-btn{color:var(--soft);background:none;border:none;padding:4px 6px;cursor:pointer}
+.footer-btn:hover{color:var(--green);text-decoration:underline}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:760px){
+  .filters{grid-template-columns:1fr;gap:8px}
+  .grid{grid-template-columns:1fr}
+  .modal{padding:0}
+  .shell{width:100%;height:100%;border:0}
+  .hint{display:none}
+}
+</style>
+<script type="application/json" id="fallback-data">{"data":[{"id":1,"title":"Live","home_team":"","away_team":"","league":"Canali on Line","venue":"Diretta","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Sport 24 🇮🇹","url":"https://matchora.pro/embed/channel/692437"},{"name":"Sport 24 B 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-872.php"},{"name":"Sport 1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/692391?ch=1917704"},{"name":"Sport 1 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-461.php"},{"name":"Sport 1 B 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportUnoIT"},{"name":"Calcio HD 🇮🇹","url":"https://matchora.pro/embed/channel/692415?ch=1917712"},{"name":"Calcio 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-870.php"},{"name":"Calcio B 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportCalcioIT"},{"name":"F1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/692427"},{"name":"F1 🇮🇹","url":"https://taifood-blog.asia/embed/mexico-city-grand-prix---practice-1-31367"},{"name":"Moto HD 🇮🇹","url":"https://matchora.pro/embed/channel/692421"},{"name":"Moto 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportMotoGPIT"},{"name":"Sport MAX HD 🇮🇹","url":"https://matchora.pro/embed/channel/1917708"},{"name":"Sport MIX HD 🇮🇹","url":"https://matchora.pro/embed/channel/1917707"},{"name":"Sport Arena HD 🇮🇹","url":"https://matchora.pro/embed/channel/692434"},{"name":"Sport Arena 🇮🇹","url":"https://asiria.is/skyarenait.php"},{"name":"Sport Arena B 🇮🇹","url":"https:\\/\\/worldsportz4u.cfd\\/online\\/stream-462.php"},{"name":"Sport Basket HD 🇮🇹","url":"https://matchora.pro/embed/channel/692418"},{"name":"Sport Basket 🇮🇹","url":"https:\\/\\/apexstreams.cfd\\/live\\/stream-876.php"},{"name":"Sport Tennis HD 🇮🇹","url":"https://matchora.to/embed/channel/692386"},{"name":"Sport Tennis 🇮🇹","url":"https:\\/\\/apexstreams.cfd\\/live\\/stream-576.php"},{"name":"Dazn 1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/920093"},{"name":"Dazn 1 HD B 🇮🇹","url":"https://ehgembxe.cfd/gmoqoz7b-4308"},{"name":"Dazn 1 🇮🇹","url":"https://worldsportz4u.cfd/online/stream-877.php"},{"name":"Dazn 1 B 🇮🇹","url":"https://livetvsx.live/go/dazn1_italy.php"},{"name":"Dazn Web 1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/920074"},{"name":"EuroSport 1 HD 🇮🇹","url":"https://ondemand.st/player/hls/?v=540&preroll=1&url=%2Fdl%2F878.m3u8&name=EuroSport%201%20Italy"},{"name":"EuroSport 2 HD 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=euro2it"}]},{"id":2,"title":"Diretta Goal","home_team":"","away_team":"","league":"CALCIO - CHAMPIONS LEAGUE","venue":"18:45","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Sport 1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/692391?ch=1917704"},{"name":"Sport 1 B HD 🇮🇹","url":"https://bp.zicotv.cc/api/player/49073"},{"name":"Sport 1 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-461.php"},{"name":"Sport 1 B 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportUnoIT"},{"name":"Live 1 🇮🇹","url":"https://matchora.pro/embed/match/2594593"}]},{"id":3,"title":"AEK - Real Madrid","home_team":"AEK","away_team":"Real Madrid","league":"CALCIO - CHAMPIONS LEAGUE","venue":"18:45","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Calcio HD 🇮🇹","url":"https://matchora.pro/embed/channel/692415?ch=1917712"},{"name":"Calcio 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-870.php"},{"name":"Calcio B 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportCalcioIT"}]},{"id":4,"title":"Fenerbahçe - Liverpool","home_team":"Fenerbahçe","away_team":"Liverpool","league":"CALCIO - CHAMPIONS LEAGUE","venue":"18:45","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Sport Arena HD 🇮🇹","url":"https://matchora.pro/embed/channel/692434"},{"name":"Sport Arena 🇮🇹","url":"https://asiria.is/skyarenait.php"},{"name":"Sport Arena B 🇮🇹","url":"https:\\/\\/worldsportz4u.cfd\\/online\\/stream-462.php"}]},{"id":5,"title":"Diretta Goal","home_team":"","away_team":"","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Sport Arena HD 🇮🇹","url":"https://matchora.pro/embed/channel/692434"},{"name":"Sport Arena 🇮🇹","url":"https://asiria.is/skyarenait.php"},{"name":"Sport Arena B 🇮🇹","url":"https:\\/\\/worldsportz4u.cfd\\/online\\/stream-462.php"},{"name":"Calcio 1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/692412"},{"name":"Live 1 🇮🇹","url":"https://matchora.pro/embed/match/2594593"}]},{"id":6,"title":"Lens - Como","home_team":"Lens","away_team":"Como","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Sport 1 HD 🇮🇹","url":"https://matchora.pro/embed/channel/692391?ch=1917704"},{"name":"Sport 1 B HD 🇮🇹","url":"https://bp.zicotv.cc/api/player/49073"},{"name":"Sport 1 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-461.php"},{"name":"Sport 1 B 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportUnoIT"},{"name":"Live 7 🇮🇹","url":"https://w6.sportsonliine.click/channels/hd/hd7.php"}]},{"id":7,"title":"Porto - Napoli","home_team":"Porto","away_team":"Napoli","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Live 2 🇮🇹","url":"https://ordernap.net/e/446jganrkt1ks"},{"name":"Live 8 🇮🇹","url":"https://w6.sportsonliine.click/channels/hd/hd8.php"},{"name":"Live 10","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-177.php"},{"name":"Live 1","url":"https://matchora.pro/embed/match/2594593"},{"name":"Live 5","url":"https://taifood-blog.asia/embed/ucl/2026-11-04/fcp-nap"}]},{"id":8,"title":"Lipsia - Man City","home_team":"Lipsia","away_team":"Man City","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Calcio HD 🇮🇹","url":"https://matchora.pro/embed/channel/692415?ch=1917712"},{"name":"Calcio 🇮🇹","url":"https:\\/\\/gomstream.xyz\\/live\\/stream-870.php"},{"name":"Calcio B 🇮🇹","url":"https://hesgoalsss.blogspot.com/p/ntv.html?id=SkySportCalcioIT"}]},{"id":9,"title":"Slavia Praga - Arsenal","home_team":"Slavia Praga","away_team":"Arsenal","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Calcio 4 🇮🇹","url":"https://matchora.pro/embed/channel/692403"},{"name":"Live 3","url":"https://matchora.pro/embed/match/2594639"},{"name":"Live 4","url":"https://taifood-blog.asia/embed/ucl/2026-11-04/slp-ars"}]},{"id":10,"title":"Borussia Dt - Betis","home_team":"Borussia Dt","away_team":"Betis","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Calcio 5 🇮🇹","url":"https://matchora.pro/embed/channel/692400"},{"name":"Live 6","url":"https://taifood-blog.asia/embed/ucl/2026-11-04/dor-bet"}]},{"id":11,"title":"Viking - Sabah","home_team":"Viking","away_team":"Sabah","league":"CALCIO - CHAMPIONS LEAGUE","venue":"21:00","start_time":"2026-11-04T19:58:03.605703+00:00","status":"live","has_stream":true,"sources":[{"name":"Live 9","url":"https://taifood-blog.asia/embed/ucl/2026-11-04/vfk-sab"}]}]}</script>
+</head>
+<body>
+<header class="app">
+  <div class="topbar">
+    <div><div class="kicker">Hattrick Broadcast Interface</div><h1><span>Hattrick</span> Terminal</h1></div>
+    <div class="status"><span class="status-dot"></span>Sistema online</div>
+  </div>
+  <section class="filters" aria-label="Filtri eventi">
+    <div>
+      <label class="label" for="league">Competizione</label>
+      <select id="league"><option value="all">Tutte le competizioni</option></select>
+    </div>
+    <div>
+      <label class="label" for="search">Cerca evento</label>
+      <div class="search" id="search-box">
+        <span aria-hidden="true">&gt;</span>
+        <input id="search" type="search" placeholder="Squadra, competizione..." autocomplete="off">
+        <button id="clear" class="clear" type="button" aria-label="Cancella ricerca">×</button>
+      </div>
+    </div>
+  </section>
+</header>
+<main class="content">
+  <div class="heading"><h2>Eventi disponibili</h2><span class="hint">Tocca un evento per aprire il player</span></div>
+  <section class="grid" id="grid"><div class="error">Caricamento eventi…</div></section>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Player evento">
+  <div class="shell">
+    <div class="modal-head">
+      <h2 class="modal-title"><span id="event-title"></span><small id="event-league"></small></h2>
+      <button class="close" id="close" type="button">× Chiudi</button>
+    </div>
+    <div class="sources-wrap" id="sources" aria-label="Seleziona canale"></div>
+    <div class="player-stage">
+      <div class="frame-wrap" id="frame-wrap">
+        <div class="frame-loader" id="loader">
+          <div class="spinner"></div>
+          <span>Caricamento stream…</span>
+        </div>
+        <iframe class="frame" id="frame" title="Player streaming"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowfullscreen
+          referrerpolicy="no-referrer"
+          style="background-color:#000; color-scheme:dark;"></iframe>
+        <div class="fallback" id="fallback">
+          <strong>Player protetto o non incorporabile</strong>
+          <p>Questo canale richiede l'apertura diretta nel browser per visualizzare il flusso.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+            <a class="fallback-btn" id="open-ext" target="_blank" rel="noopener noreferrer">Apri in nuova scheda</a>
+            <button class="fallback-btn" id="retry-btn" type="button">Riprova nel frame</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span id="source-info">SORGENTE: —</span>
+      <button class="footer-btn" id="fullscreen" type="button">[⛶ Schermo intero]</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const el = {
+    grid:$("grid"), league:$("league"), search:$("search"), clear:$("clear"), searchBox:$("search-box"),
+    modal:$("modal"), title:$("event-title"), eventLeague:$("event-league"),
+    sources:$("sources"), frame:$("frame"), loader:$("loader"), fallback:$("fallback"),
+    openExt:$("open-ext"), retryBtn:$("retry-btn"), close:$("close"),
+    sourceInfo:$("source-info"), fullscreen:$("fullscreen"), frameWrap:$("frame-wrap")
+  };
+
+  let allEvents = [];
+  let shownEvents = [];
+  let activeIndex = -1;
+  let activeSources = [];
+  let loadTimeout = 0;
+  let currentToken = 0;
+  let modalOpen = false;
+  let returnFocus = null;
+
+  const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, ch =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])
+  );
+
+  const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  function highlight(value, query) {
+    const safe = escapeHTML(value);
+    if (!query) return safe;
+    return safe.replace(new RegExp("(" + escapeRegex(query) + ")", "ig"), '<span class="hl">$1</span>');
+  }
+
+  const getSources = ev => Array.isArray(ev.sources)
+    ? ev.sources.filter(s => s && typeof s.url === "string" && /^https?:\/\//i.test(s.url))
+    : [];
+
+  function render() {
+    const query = el.search.value.trim().toLocaleLowerCase("it");
+    const league = el.league.value;
+
+    shownEvents = allEvents.filter(ev => {
+      if (!getSources(ev).length) return false;
+      if (league !== "all" && ev.league !== league) return false;
+      const text = [ev.title, ev.home_team, ev.away_team, ev.league, ev.venue].filter(Boolean).join(" ").toLocaleLowerCase("it");
+      return !query || text.includes(query);
+    });
+
+    if (!shownEvents.length) {
+      el.grid.innerHTML = '<div class="error">Nessun evento trovato.</div>';
+      return;
+    }
+
+    el.grid.innerHTML = shownEvents.map((ev, idx) => {
+      const title = ev.home_team && ev.away_team
+        ? `<span class="team">${highlight(ev.home_team, query)}</span><span class="versus">VS</span><span class="team">${highlight(ev.away_team, query)}</span>`
+        : `<span class="team">${highlight(ev.title || "Evento live", query)}</span>`;
+      const count = getSources(ev).length;
+      return `<button class="card" type="button" data-index="${idx}">
+        <span class="card-top">
+          <span class="league">${highlight(ev.league || "Generale", query)}</span>
+          <span class="live"><span class="live-dot"></span>LIVE</span>
+        </span>
+        <span class="teams">${title}</span>
+        <span class="card-bottom">
+          <span class="meta">${escapeHTML(ev.venue || "Diretta streaming")}</span>
+          <span class="watch">▶ Guarda${count > 1 ? " · " + count + " canali" : ""}</span>
+        </span>
+      </button>`;
+    }).join("");
+  }
+
+  function resetBlankFrame() {
+    el.frame.onload = null;
+    el.frame.srcdoc = '<!DOCTYPE html><html style="background:#000;height:100%"><body style="background:#000;margin:0"></body></html>';
+  }
+
+  function loadSource(source, index) {
+    if (!source || !source.url) return;
+
+    const token = ++currentToken;
+    activeIndex = index;
+
+    clearTimeout(loadTimeout);
+    el.fallback.classList.remove("visible");
+    el.loader.style.display = "flex";
+
+    el.sources.querySelectorAll(".source-btn").forEach((btn, i) => {
+      btn.classList.toggle("active", i === index);
+    });
+
+    el.sourceInfo.textContent = "SORGENTE: " + (source.name || "Canale " + (index + 1));
+    el.openExt.href = source.url;
+
+    // Sandbox dinamica: escludi per matchora, aggressiva per gli altri
+    if (source.url.toLowerCase().includes("matchora")) {
+      el.frame.removeAttribute("sandbox");
+    } else {
+      el.frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-presentation allow-forms");
+    }
+
+    resetBlankFrame();
+
+    setTimeout(() => {
+      if (token !== currentToken || !modalOpen) return;
+
+      el.frame.onload = () => {
+        if (token !== currentToken) return;
+        clearTimeout(loadTimeout);
+        el.loader.style.display = "none";
+      };
+
+      loadTimeout = setTimeout(() => {
+        if (token !== currentToken || !modalOpen) return;
+        el.loader.style.display = "none";
+      }, 7000);
+
+      el.frame.removeAttribute("srcdoc");
+      el.frame.src = source.url;
+    }, 50);
+  }
+
+  function openEvent(ev) {
+    const sources = getSources(ev);
+    if (!sources.length) return;
+
+    activeSources = sources;
+    returnFocus = document.activeElement;
+    modalOpen = true;
+
+    const cleanTitle = ev.home_team && ev.away_team ? `${ev.home_team} vs ${ev.away_team}` : (ev.title || "Evento live");
+    el.title.textContent = cleanTitle.replace(/[\s\-–/]+$/, "");
+    el.eventLeague.textContent = ev.league ? " // " + ev.league.replace(/[\s\-–/]+$/, "") : "";
+
+    el.sources.replaceChildren();
+    if (sources.length > 1) {
+      el.sources.style.display = "flex";
+      const lbl = document.createElement("span");
+      lbl.className = "source-label";
+      lbl.textContent = "Canali:";
+      el.sources.appendChild(lbl);
+
+      sources.forEach((src, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "source-btn";
+        btn.textContent = src.name || `Canale ${idx + 1}`;
+        btn.addEventListener("click", () => loadSource(src, idx));
+        el.sources.appendChild(btn);
+      });
+    } else {
+      el.sources.style.display = "none";
+    }
+
+    el.modal.classList.add("open");
+    el.modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+
+    loadSource(sources[0], 0);
+    el.close.focus();
+  }
+
+  function closeModal() {
+    if (!modalOpen) return;
+    modalOpen = false;
+    currentToken++;
+    clearTimeout(loadTimeout);
+
+    el.modal.classList.remove("open");
+    el.modal.setAttribute("aria-hidden", "true");
+    el.fallback.classList.remove("visible");
+    el.loader.style.display = "flex";
+
+    resetBlankFrame();
+    document.body.style.overflow = "";
+
+    if (returnFocus && returnFocus.focus) returnFocus.focus();
+    returnFocus = null;
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        if (screen.orientation && screen.orientation.unlock) {
+          try { screen.orientation.unlock(); } catch(_) {}
+        }
+        await document.exitFullscreen().catch(() => {});
+      } else if (el.frameWrap.requestFullscreen) {
+        await el.frameWrap.requestFullscreen();
+        if (screen.orientation && screen.orientation.lock) {
+          try { await screen.orientation.lock("landscape"); } catch(_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && screen.orientation && screen.orientation.unlock) {
+      try { screen.orientation.unlock(); } catch(_) {}
+    }
+  });
+
+  try {
+    const raw = JSON.parse($("fallback-data").textContent);
+    allEvents = Array.isArray(raw.data) ? raw.data : [];
+  } catch (_) {
+    allEvents = [];
+  }
+
+  const leagues = [...new Set(allEvents.map(e => e.league).filter(Boolean))].sort((a,b) => a.localeCompare(b, "it"));
+  leagues.forEach(l => el.league.add(new Option(l, l)));
+  render();
+
+  el.grid.addEventListener("click", e => {
+    const card = e.target.closest(".card");
+    if (card) openEvent(shownEvents[Number(card.dataset.index)]);
+  });
+  el.league.addEventListener("change", render);
+  el.search.addEventListener("input", () => {
+    el.searchBox.classList.toggle("has-val", el.search.value.length > 0);
+    render();
+  });
+  el.clear.addEventListener("click", () => {
+    el.search.value = "";
+    el.searchBox.classList.remove("has-val");
+    render();
+    el.search.focus();
+  });
+
+  el.close.addEventListener("click", closeModal);
+  el.modal.addEventListener("click", e => { if (e.target === el.modal) closeModal(); });
+  el.fullscreen.addEventListener("click", toggleFullscreen);
+  el.retryBtn.addEventListener("click", () => {
+    if (activeIndex >= 0 && activeSources[activeIndex]) {
+      loadSource(activeSources[activeIndex], activeIndex);
+    }
+  });
+
+  document.addEventListener("keydown", e => {
+    if (!modalOpen) return;
+    if (e.key === "Escape" || e.key === "Backspace") { e.preventDefault(); closeModal(); }
+    else if (e.key.toLowerCase() === "f") { e.preventDefault(); toggleFullscreen(); }
+  });
+})();
+</script>
+</body>
+</html>
