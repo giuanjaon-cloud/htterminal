@@ -36,6 +36,7 @@ HTML_TEMPLATE = r'''<!doctype html>
 <meta name="theme-color" content="#030503">
 <meta name="referrer" content="no-referrer">
 <title>Hattrick Terminal — Live</title>
+<link rel="manifest" href="./manifest.json">
 <script>
   window.open = function() { return null; };
   window.addEventListener("beforeunload", function (e) {
