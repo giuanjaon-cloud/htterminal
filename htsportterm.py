@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
 
-BASE_SITE = "https://www.htsport.org/"
+BASE_SITE = "https://htsport.info/"
 
 HEADERS = {
     "User-Agent": (
